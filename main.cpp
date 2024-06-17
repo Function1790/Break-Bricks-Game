@@ -22,6 +22,7 @@ math	-> sin, cos, tan
 #define STICK_LENGTH 3
 #define SIZEOF_MAP_X 20
 #define SIZEOF_MAP_Y 20
+
 //define Mecro
 #define FOR(x, n) for(int x=0;x<(n);x++) 
 #define print printf
@@ -33,25 +34,25 @@ typedef struct vector {
 } Vector;
 
 int i, j;
-static int score = 0;;
+static int score = 0;
 static Vector ballPos;
 static Vector ballVel;
 static Vector pos;
-static char* PIXEL_SHAPE = " V=O";
+static char* PIXEL_SHAPE = "   @";
 static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1,0,0},
+    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1,0,0},
+    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -76,17 +77,32 @@ void addVector(Vector* a, Vector b){
 	(*a).y += b.y;
 }
 
+void gotoxy(int x, int y)
+{
+ COORD pos={x,y};
+ SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),pos);
+}
+
+void setcolor(int color, int bgcolor)
+{
+    color &= 0xf;
+    bgcolor &= 0xf;
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), (bgcolor << 4) | color);
+}
 
 //display map & objects
 void render() {
 	FOR(i, 20){
 		FOR(j, 20){
-			
+			gotoxy(j, i);
 			if( j>=pos.x && j<pos.x+STICK_LENGTH && pos.y==i){ // player
+				setcolor(7,6);
 				print("%c", PIXEL_SHAPE[2]);
 			} else if(ballPos.x==j && ballPos.y==i){ // ball
+				setcolor(4,0);
 				print("%c", PIXEL_SHAPE[3]);
 			} else {
+				setcolor(7,map[i][j]);
 				print("%c", PIXEL_SHAPE[map[i][j]]);
 			}
 		}
@@ -124,7 +140,7 @@ void init(){
 	srand(time(NULL));
 	setVector(&pos, 7, STICK_Y);
 	setVector(&ballPos, 7, STICK_Y - 1);
-	setVector(&ballVel, 1, -1);
+	setVector(&ballVel, 1, 1);
 }
 
 //__stdcall -> Pascal protocall
@@ -149,7 +165,14 @@ void moveBall(){
 	nextBallPos.x = ballPos.x + ballVel.x;
 	nextBallPos.y = ballPos.y + ballVel.y;
 	// Hit
+	//부딪히는 부분 
 	if(map[nextBallPos.y][nextBallPos.x]==1){
+		if(map[nextBallPos.y][ballPos.x]){
+			ballVel.y *= -1;
+		}
+		if(map[ballPos.y][nextBallPos.x]){
+			ballVel.x *= -1;
+		}
 		map[nextBallPos.y][nextBallPos.x] = 0;
 		score++;
 	}
@@ -159,9 +182,10 @@ void moveBall(){
 	}
 	if(!isBetween(nextBallPos.y, SIZEOF_MAP_Y)){
 		ballVel.y *= -1;
-	}
+	} else if (nextBallPos.y)
 	// Move
 	addVector(&ballPos, ballVel);
+	
 }
 
 void processPhysics(){
@@ -173,7 +197,7 @@ int main(void){
 	//threading
     _beginthreadex(NULL, 0, move, 0, 0, NULL);
     while(1){
-    	system("cls");
+    	//system("cls");
     	//engine
     	processPhysics();
     	
@@ -183,8 +207,7 @@ int main(void){
     	print("V(%d, %d)\n", ballVel.x, ballVel.y);
     	print("play P(%d, %d)\t", pos.x, pos.y);
     	print("S: %d", score);
-    	Sleep(200);
-    	
+    	Sleep(100);	
 	}
     return 0;
 }
