@@ -19,7 +19,7 @@ math	-> sin, cos, tan
 #define PI 3.14159265 
 #define deg PI/180
 #define STICK_Y 19
-#define STICK_LENGTH 3
+#define STICK_LENGTH 4
 #define SIZEOF_MAP_X 20
 #define SIZEOF_MAP_Y 20
 
@@ -33,21 +33,28 @@ typedef struct vector {
 	int y = 0;
 } Vector;
 
+typedef struct vector_double {
+	double x = 0;
+	double y = 0;
+} Vector_D;
+
 int i, j;
 static int score = 0;
 static Vector ballPos;
-static Vector ballVel;
+static Vector_D ballVel;
+static Vector_D ballImPos; // ball Imagine Pos
+static int ballSpeed = 1.5;
 static Vector pos;
 static char* PIXEL_SHAPE = "   @";
 static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,0,0,0},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
@@ -68,6 +75,11 @@ int random(int a, int b){
 }
 
 void setVector(Vector* a, int x, int y){
+	(*a).x = x;
+	(*a).y = y;
+}
+
+void setVector_D(Vector_D* a, double x, double y){
 	(*a).x = x;
 	(*a).y = y;
 }
@@ -97,13 +109,19 @@ void render() {
 			gotoxy(j, i);
 			if( j>=pos.x && j<pos.x+STICK_LENGTH && pos.y==i){ // player
 				setcolor(7,6);
-				print("%c", PIXEL_SHAPE[2]);
+				print(" ");
 			} else if(ballPos.x==j && ballPos.y==i){ // ball
 				setcolor(4,0);
-				print("%c", PIXEL_SHAPE[3]);
+				print("@");
 			} else {
-				setcolor(7,map[i][j]);
-				print("%c", PIXEL_SHAPE[map[i][j]]);
+				if(map[i][j]==1){
+					setcolor(7,1);
+					print(" ");
+				} else {
+					setcolor(7,0);
+					print(" ");
+				}
+				
 			}
 		}
 		print("\n");
@@ -139,8 +157,8 @@ void init(){
 	SetConsoleTitle("Break the Bricks");
 	srand(time(NULL));
 	setVector(&pos, 7, STICK_Y);
-	setVector(&ballPos, 7, STICK_Y - 1);
-	setVector(&ballVel, 1, 1);
+	setVector_D(&ballImPos, 7, STICK_Y - 1);
+	setVector_D(&ballVel, 0, -1);
 }
 
 //__stdcall -> Pascal protocall
@@ -161,11 +179,11 @@ unsigned __stdcall move(void* arg) {
 }
 
 Vector nextBallPos;
+double ballDeg;
 void moveBall(){
 	nextBallPos.x = ballPos.x + ballVel.x;
 	nextBallPos.y = ballPos.y + ballVel.y;
 	// Hit
-	//부딪히는 부분 
 	if(map[nextBallPos.y][nextBallPos.x]==1){
 		if(map[nextBallPos.y][ballPos.x]){
 			ballVel.y *= -1;
@@ -184,8 +202,16 @@ void moveBall(){
 		ballVel.y *= -1;
 	} else if (nextBallPos.y)
 	// Move
-	addVector(&ballPos, ballVel);
+	ballImPos.x += ballVel.x;
+	ballImPos.y += ballVel.y;
+	setVector(&ballPos, (int)ballImPos.x, (int)ballImPos.y);
 	
+	// Hit Bar
+	if (nextBallPos.y==STICK_Y - 1 && nextBallPos.x >= pos.x && nextBallPos.x < pos.x+STICK_LENGTH){
+		ballDeg = random(0,1800) * deg / 10;
+		ballVel.x = ballSpeed*cos(ballDeg);
+		ballVel.y = -ballSpeed*sin(ballDeg);
+	}	
 }
 
 void processPhysics(){
@@ -204,7 +230,7 @@ int main(void){
     	//display
     	render();
     	print("ball P(%d, %d)\t", ballPos.x, ballPos.y);
-    	print("V(%d, %d)\n", ballVel.x, ballVel.y);
+    	print("V(%.2f, %.2f)\n", ballVel.x, ballVel.y);
     	print("play P(%d, %d)\t", pos.x, pos.y);
     	print("S: %d", score);
     	Sleep(100);	
