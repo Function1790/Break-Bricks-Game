@@ -7,6 +7,7 @@
 #include <math.h>
 
 // https://m.blog.naver.com/qwaszs/140123447303
+// 맵 입출력 
 
 /*
 conio	-> getch
@@ -18,10 +19,10 @@ math	-> sin, cos, tan
 //define Const
 #define PI 3.14159265 
 #define deg PI/180
-#define STICK_Y 19
 #define STICK_LENGTH 4
 #define SIZEOF_MAP_X 20
-#define SIZEOF_MAP_Y 20
+#define SIZEOF_MAP_Y 25
+#define STICK_Y 24
 
 //define Mecro
 #define FOR(x, n) for(int x=0;x<(n);x++) 
@@ -43,7 +44,7 @@ static int score = 0;
 static Vector ballPos;
 static Vector_D ballVel;
 static Vector_D ballImPos; // ball Imagine Pos
-static int ballSpeed = 1.5;
+static int ballSpeed = 1;
 static Vector pos;
 static char* PIXEL_SHAPE = "   @";
 static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
@@ -56,10 +57,15 @@ static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -104,22 +110,22 @@ void setcolor(int color, int bgcolor)
 
 //display map & objects
 void render() {
-	FOR(i, 20){
-		FOR(j, 20){
-			gotoxy(j, i);
+	FOR(i, SIZEOF_MAP_Y){
+		FOR(j, SIZEOF_MAP_X){
+			gotoxy(j*2, i);
 			if( j>=pos.x && j<pos.x+STICK_LENGTH && pos.y==i){ // player
 				setcolor(7,6);
-				print(" ");
+				print("  ");
 			} else if(ballPos.x==j && ballPos.y==i){ // ball
-				setcolor(4,0);
-				print("@");
+				setcolor(7,4);
+				print("  ");
 			} else {
 				if(map[i][j]==1){
 					setcolor(7,1);
-					print(" ");
+					print("  ");
 				} else {
 					setcolor(7,0);
-					print(" ");
+					print("  ");
 				}
 				
 			}
@@ -157,7 +163,7 @@ void init(){
 	SetConsoleTitle("Break the Bricks");
 	srand(time(NULL));
 	setVector(&pos, 7, STICK_Y);
-	setVector_D(&ballImPos, 7, STICK_Y - 1);
+	setVector_D(&ballImPos, 7,  SIZEOF_MAP_Y- 1);
 	setVector_D(&ballVel, 0, -1);
 }
 
@@ -181,16 +187,22 @@ unsigned __stdcall move(void* arg) {
 Vector nextBallPos;
 double ballDeg;
 void moveBall(){
-	nextBallPos.x = ballPos.x + ballVel.x;
-	nextBallPos.y = ballPos.y + ballVel.y;
+	nextBallPos.x = ballImPos.x + ballVel.x;
+	nextBallPos.y = ballImPos.y + ballVel.y;
 	// Hit
 	if(map[nextBallPos.y][nextBallPos.x]==1){
-		if(map[nextBallPos.y][ballPos.x]){
+		if(nextBallPos.x<=ballImPos.x || ballImPos.x < nextBallPos.x + 1 && nextBallPos.x+ ballVel.x<=ballImPos.x || ballImPos.x+ ballVel.x < nextBallPos.x + 1){
+			ballVel.y *= -1;
+		}
+		if(nextBallPos.y<=ballImPos.y || ballImPos.y < nextBallPos.y + 1 && nextBallPos.y+ ballVel.y<=ballImPos.y || ballImPos.y+ ballVel.y < nextBallPos.y + 1){
+			ballVel.x *= -1;
+		}
+		/*if(map[nextBallPos.y][ballPos.x]){
 			ballVel.y *= -1;
 		}
 		if(map[ballPos.y][nextBallPos.x]){
 			ballVel.x *= -1;
-		}
+		}*/
 		map[nextBallPos.y][nextBallPos.x] = 0;
 		score++;
 	}
@@ -208,7 +220,7 @@ void moveBall(){
 	
 	// Hit Bar
 	if (nextBallPos.y==STICK_Y - 1 && nextBallPos.x >= pos.x && nextBallPos.x < pos.x+STICK_LENGTH){
-		ballDeg = random(0,1800) * deg / 10;
+		ballDeg = random(250,1450) * deg / 10;
 		ballVel.x = ballSpeed*cos(ballDeg);
 		ballVel.y = -ballSpeed*sin(ballDeg);
 	}	
@@ -232,8 +244,9 @@ int main(void){
     	print("ball P(%d, %d)\t", ballPos.x, ballPos.y);
     	print("V(%.2f, %.2f)\n", ballVel.x, ballVel.y);
     	print("play P(%d, %d)\t", pos.x, pos.y);
-    	print("S: %d", score);
-    	Sleep(100);	
+    	gotoxy(SIZEOF_MAP_X*2+2, 3);
+    	print("Score: %d", score);
+    	Sleep(50);	
 	}
     return 0;
 }
