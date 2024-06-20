@@ -6,13 +6,14 @@
 #include <time.h>
 #include <math.h>
 
+
 // https://m.blog.naver.com/qwaszs/140123447303
 // 맵 입출력 
 
 /*
 conio	-> getch
 windows	-> system
-process	-> _beginthreadex
+procexss	-> _beginthreadex
 math	-> sin, cos, tan
 */
 
@@ -39,23 +40,31 @@ typedef struct vector_double {
 	double y = 0;
 } Vector_D;
 
-int i, j;
+struct Ball {
+	Vector pos;
+	Vector_D vel;
+	Vector_D imPos;
+};
+
+int i, j, m;
 static int score = 0;
 static Vector ballPos;
 static Vector_D ballVel;
 static Vector_D ballImPos; // ball Imagine Pos
-static int ballSpeed = 1;
+static double ballSpeed = 0.3;
 static Vector pos;
+static Ball ballList[100];
+static int ballLength=0;
 static char* PIXEL_SHAPE = "   @";
 static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
@@ -63,8 +72,8 @@ static int map[SIZEOF_MAP_Y][SIZEOF_MAP_X]={
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    {1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1},
+    {1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -93,6 +102,14 @@ void setVector_D(Vector_D* a, double x, double y){
 void addVector(Vector* a, Vector b){
 	(*a).x += b.x;
 	(*a).y += b.y;
+}
+
+void SwitchingConsoleCursor(bool flag)
+{
+	CONSOLE_CURSOR_INFO cursorInfo;
+	cursorInfo.dwSize = 10;
+	cursorInfo.bVisible = flag;
+	SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
 }
 
 void gotoxy(int x, int y)
@@ -132,6 +149,7 @@ void render() {
 		}
 		print("\n");
 	}
+	setcolor(7,0);
 }
 
 int isBetween(int x, int max){
@@ -158,12 +176,32 @@ void moveStick(int dx){
 	}
 }
 
+int sym(double x){
+	if(x<0){
+		return -1;
+	}
+	return 1;
+}
+
+Ball newBall(){
+	Ball ball;
+	setVector(&(ball.pos), 7, STICK_Y);
+	setVector_D(&(ball.imPos), 7,  SIZEOF_MAP_Y - 2);
+	setVector_D(&(ball.vel), 0, -1);
+}
+
+void pushBall(Ball ball){
+	ballList[ballLength-1]=ball;
+	ballLength++;
+}
+
+
 //----------------[GAME]----------------
 void init(){
 	SetConsoleTitle("Break the Bricks");
 	srand(time(NULL));
 	setVector(&pos, 7, STICK_Y);
-	setVector_D(&ballImPos, 7,  SIZEOF_MAP_Y- 1);
+	setVector_D(&ballImPos, 7,  SIZEOF_MAP_Y - 2);
 	setVector_D(&ballVel, 0, -1);
 }
 
@@ -186,23 +224,22 @@ unsigned __stdcall move(void* arg) {
 
 Vector nextBallPos;
 double ballDeg;
+int throughX , throughY, betweenX, betweenY;
 void moveBall(){
 	nextBallPos.x = ballImPos.x + ballVel.x;
 	nextBallPos.y = ballImPos.y + ballVel.y;
 	// Hit
-	if(map[nextBallPos.y][nextBallPos.x]==1){
-		if(nextBallPos.x<=ballImPos.x || ballImPos.x < nextBallPos.x + 1 && nextBallPos.x+ ballVel.x<=ballImPos.x || ballImPos.x+ ballVel.x < nextBallPos.x + 1){
+	if(map[nextBallPos.y][nextBallPos.x]==1 && isBetween(nextBallPos.x, SIZEOF_MAP_X -1) && isBetween(nextBallPos.y, SIZEOF_MAP_Y -1)){
+		throughY = ballImPos.y>=nextBallPos.y+1 && ballImPos.y + ballVel.y <= nextBallPos.y+1 || ballImPos.y<=nextBallPos.y && ballImPos.y + ballVel.y >= nextBallPos.y;
+		throughX = ballImPos.x>=nextBallPos.x+1 && ballImPos.x + ballVel.x <= nextBallPos.x+1 || ballImPos.x<=nextBallPos.x && ballImPos.x + ballVel.x >= nextBallPos.x;
+		betweenX = nextBallPos.x<=ballImPos.x || ballImPos.x < nextBallPos.x + 1 && nextBallPos.x+ ballVel.x<=ballImPos.x || ballImPos.x+ ballVel.x < nextBallPos.x + 1;
+		betweenY = nextBallPos.y<=ballImPos.y || ballImPos.y < nextBallPos.y + 1 && nextBallPos.y+ ballVel.y<=ballImPos.y || ballImPos.y+ ballVel.y < nextBallPos.y + 1;
+		if(throughY && betweenX){
 			ballVel.y *= -1;
 		}
-		if(nextBallPos.y<=ballImPos.y || ballImPos.y < nextBallPos.y + 1 && nextBallPos.y+ ballVel.y<=ballImPos.y || ballImPos.y+ ballVel.y < nextBallPos.y + 1){
+		if(throughX && betweenY){
 			ballVel.x *= -1;
 		}
-		/*if(map[nextBallPos.y][ballPos.x]){
-			ballVel.y *= -1;
-		}
-		if(map[ballPos.y][nextBallPos.x]){
-			ballVel.x *= -1;
-		}*/
 		map[nextBallPos.y][nextBallPos.x] = 0;
 		score++;
 	}
@@ -212,7 +249,7 @@ void moveBall(){
 	}
 	if(!isBetween(nextBallPos.y, SIZEOF_MAP_Y)){
 		ballVel.y *= -1;
-	} else if (nextBallPos.y)
+	}
 	// Move
 	ballImPos.x += ballVel.x;
 	ballImPos.y += ballVel.y;
@@ -220,8 +257,8 @@ void moveBall(){
 	
 	// Hit Bar
 	if (nextBallPos.y==STICK_Y - 1 && nextBallPos.x >= pos.x && nextBallPos.x < pos.x+STICK_LENGTH){
-		ballDeg = random(250,1450) * deg / 10;
-		ballVel.x = ballSpeed*cos(ballDeg);
+		ballDeg = random(250,900) * deg / 10;
+		ballVel.x = sym(ballVel.x)*ballSpeed*cos(ballDeg);
 		ballVel.y = -ballSpeed*sin(ballDeg);
 	}	
 }
@@ -229,9 +266,10 @@ void moveBall(){
 void processPhysics(){
 	moveBall();
 }
-
 int main(void){
+	SwitchingConsoleCursor(false);
 	init();
+
 	//threading
     _beginthreadex(NULL, 0, move, 0, 0, NULL);
     while(1){
@@ -246,7 +284,7 @@ int main(void){
     	print("play P(%d, %d)\t", pos.x, pos.y);
     	gotoxy(SIZEOF_MAP_X*2+2, 3);
     	print("Score: %d", score);
-    	Sleep(50);	
+    	//Sleep(0);	
 	}
     return 0;
 }
